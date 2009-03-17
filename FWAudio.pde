@@ -71,3 +71,13 @@ public void playAudio() {
 }
 
 
+void drawPlayhead() {
+  if (mySound != null) {
+    fill(0);
+    stroke(0);
+    rect(0, height, width, -20);
+    float phase = mySound.cue * 1.0 / mySound.size;
+    stroke(0.25, 0.8, 1);
+    line(width*phase, height, width*phase, height-19);
+  }
+}

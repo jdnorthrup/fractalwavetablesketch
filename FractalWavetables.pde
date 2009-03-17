@@ -24,12 +24,14 @@
 // v1 - basic algorithm and mono saving
 // v2 - added drag-and-drop import of fw_xxxx.aif files
 // v3 - code cleanup
-// v4 - 
+// v4 - switched to controlP5 library for most of GUI.
+//      refactored code -- FWAudio could become class
 //
 // 
 
 import krister.Ess.*;  // nice simple sound library
 import sojamo.drop.*;
+import controlP5.*;  // holy shit this library rocks
 
 
 /*
@@ -37,17 +39,16 @@ import sojamo.drop.*;
  */
 
 // Important constants
-int SR = 44100;
-int maxSliders = 80;
-boolean canSave = true;  // set to true to run this locally and write files
+final int SR = 44100;
+final int MAX_SLIDERS = 80;
+final int LEFT_MARGIN = 100;
 
 // fractal data
-FloatFract[] fracts = new FloatFract[3];  // left, right, and l->r morph versions
-FloatFract fract = fracts[0];
+// FloatFract[] fracts = new FloatFract[3];  // left, right, and l->r morph versions
+FloatFract fract; // = fracts[0];
 
 // pattern size / timing data
-int curNumSliders = 0;
-float curTargetLength = 0;
+float curDuration = 0;
 int targetIteration = 0;
 
 // audio system
@@ -55,27 +56,91 @@ AudioChannel mySound;
 boolean waveDirty = true;
 boolean audioPlaying = true;
 
-SDrop drop;  // for dropping saved files back into the program to load as "presets"
-
 /*
  * Control
  */
- 
+
+SDrop drop;  // for dropping saved files back into the program to load as "presets"
+  
+public ControlP5 controlP5;
+Slider stepsSlider;
+Slider durationSlider;
+FWSliderPool patternSliders;
+IterationView fractView;
+
+// create and wire the entire GUI...
 void setup() {
   Ess.start(this);
+
+  // drag-and-drop handler for file imports
+  drop = new SDrop(this);
 
   size(800, 600);
   colorMode(HSB, 1);
   background(0);
-  
-  drop = new SDrop(this);
-  
-  fract = new FloatFract();
 
-  createGUI(); 
-  updatePattern();
+  // the fractal model
+  fract = new FloatFract();
+  
+  // setup UI
+  controlP5 = new ControlP5(this);
+  
+  // horizontal sliders
+  stepsSlider = controlP5.addSlider("steps",2,MAX_SLIDERS,3,LEFT_MARGIN,245,width-200,10);
+  stepsSlider.setLabel("");
+  durationSlider = controlP5.addSlider("duration",0.25,30,4.0,LEFT_MARGIN,275,width-200,10); 
+  durationSlider.setLabel("seconds");
+  durationSlider.setDecimalPrecision(2);  
+  
+  // labels
+  controlP5.addTextlabel("patternLabel", "pattern", LEFT_MARGIN-43, 121);
+  controlP5.addTextlabel("stepsLabel", "steps", LEFT_MARGIN-33, 246);
+  controlP5.addTextlabel("durationLabel", "duration", LEFT_MARGIN-47, 276);
+  
+  controlP5.addTextlabel("1", "1", (LEFT_MARGIN + width-200)+10, 50);
+  controlP5.addTextlabel("0", "0", (LEFT_MARGIN + width-200)+10, 123);
+  controlP5.addTextlabel("-1", "-1", (LEFT_MARGIN + width-200)+8, 193);
+
+  // save button -- only if we're running as an application
+  if(!online) {
+    controlP5.Button saveButton = controlP5.addButton("save",1,width-99,309,80,20);
+    saveButton.setLabel("Save Audio");
+  }
+  
+  // bank of vertical pattern sliders that can work as a "draw" area
+  patternSliders = new FWSliderPool(round(stepsSlider.value()), MAX_SLIDERS, LEFT_MARGIN, 50, width-200, 150);
+  // set initial values for pattern sliders
+  float[] vals = { 1, 0.5, 1 };
+  for (int i = 0; i < patternSliders.size(); i++)
+    patternSliders.slider(i).setValue(vals[i]);
+
+  // fractal iteration viewer
+  fractView = new IterationView(fract.getSegments(), 10, 0, height, width, -230);
+
+  updateFractalSettings();
 }
 
+/**
+  * controlP5 event callbacks
+  */
+
+public void steps(float val) {
+  stepsSlider.setValueLabel(""+round(val));
+  checkNumSliders();
+}
+
+public void duration(float val) {
+  // this will get polled in mouseReleased()
+}
+
+public void save(float val) {
+  doSave();
+}
+
+
+/**
+  * applet events
+  */
 
 public void stop() {
   Ess.stop();
@@ -84,11 +149,14 @@ public void stop() {
 
 
 public void draw() {
-  drawGUI();
+  patternSliders.draw();
+  drawPlayhead();
   
   // process any updates
   if(fract.iteration() < targetIteration) {
+    fractView.draw();
     fract.iterate();
+    fractView.setNextIteration(fract.getSegments());
   } 
   else if (waveDirty && audioPlaying) {
     stopAudio();
@@ -98,28 +166,10 @@ public void draw() {
 }
 
 
-void mousePressed() {
-  if(canSave) {
-    if(saveButton.pressed()) {
-      doSave();
-    }
-  }
-}
-
-
-void mouseDragged() {
-  if(numSlidersSlider.mouseOver()) {
-    checkNumSliders();
-  } else if (targetLengthSlider.mouseOver()) {
-    drawTargetLengthIndicator();
-  }
-}
-
-
 void mouseReleased() {
   checkNumSliders();
-  checkTargetLength();
-  updatePattern();
+  checkDuration();
+  updateFractalSettings();
 }
 
 
@@ -138,7 +188,7 @@ void dropEvent(DropEvent theDropEvent) {
 
 
 /*
- * Control Helper Functions
+ * Control Functions
  */ 
 
 void doSave() {
@@ -163,52 +213,47 @@ void doRestore(String fileName) {
     //print("restoring seed:" + fileName);
     stopAudio();
     invalidateAudio();
-    clearDisplay();
     FloatFract newFract = new FloatFract(fileName);  
     // copy seed onto UI sliders
-    numSlidersSlider.setValue(newFract.pattern().size());
+    stepsSlider.setValue(newFract.pattern().size());
     checkNumSliders();
-    checkTargetLength();
-    for(int i = 0; i < curNumSliders; i++) {
-      sliders[i].setValue(((Double)newFract.pattern().get(i)).floatValue());
+    checkDuration();
+    for(int i = 0; i < patternSliders.size(); i++) {
+      patternSliders.slider(i).setValue(((Double)newFract.pattern().get(i)).floatValue());
     }
-    updatePattern();
-    drawSlidersIndicator();
+    updateFractalSettings();
     playAudio();
   }
 }
 
 void checkNumSliders() {
-  if(curNumSliders != desiredNumSliders()) {
+  if(patternSliders.size() != round(stepsSlider.value())) {
     stopAudio();    
-    setupSliders(desiredNumSliders());
+    patternSliders.setSize((round(stepsSlider.value())));
     Runtime.getRuntime().gc(); 
   }
 }  
 
-void checkTargetLength() {
-  if(curTargetLength != targetLengthSlider.value()) {
-    curTargetLength = targetLengthSlider.value();
-    drawTargetLengthIndicator();
+void checkDuration() {
+  if(curDuration != durationSlider.value()) {
+    curDuration = durationSlider.value();
     if(targetIteration != calculateIterationBounds())
       waveDirty = true;
   }
 }
 
-int desiredNumSliders() {
-  return numSlidersSlider.intValue();
-}
 
-void updatePattern() {
-  ArrayList newPattern = new ArrayList(curNumSliders);
-  for(int i = 0; i < curNumSliders; i++) {
-    newPattern.add(new Double(sliders[i].value()));
+void updateFractalSettings() {
+  ArrayList newPattern = new ArrayList(patternSliders.size());
+  for(int i = 0; i < patternSliders.size(); i++) {
+    newPattern.add(new Double(patternSliders.slider(i).value()));
   }
   if(waveDirty || (!patternsSame(newPattern, fract.pattern()))) {
     targetIteration = calculateIterationBounds();
     fract.setPattern(newPattern); 
+    fractView.reset(this);
+    fractView.setNextIteration(newPattern);
     invalidateAudio();
-    clearDisplay();
     Runtime.getRuntime().gc(); 
     playAudio();
   }
@@ -216,16 +261,15 @@ void updatePattern() {
 
 int calculateIterationBounds() { 
   // numSliders^iteration = total samples
-  float targetLength = targetLengthSlider.value();
-  float numIterations = log(SR*targetLength) / log(curNumSliders);
+  float targetLength = durationSlider.value();
+  float numIterations = log(SR*targetLength) / log(patternSliders.size());
   
   int targetIteration = ceil(numIterations); // favor longer clips
   // unless it would be too long
-  if (pow(curNumSliders, targetIteration) >= SR*targetLength*4)
+  if (pow(patternSliders.size(), targetIteration) >= SR*targetLength*4)
     targetIteration--;
     
   return targetIteration;
 }
-
 
 
