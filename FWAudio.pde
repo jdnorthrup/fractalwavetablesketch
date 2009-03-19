@@ -3,33 +3,35 @@
  */
 
 public void writeAudio() {
-  ArrayList segments = fract.getSegments();
-  int numSegments = segments.size();
+  for(int p = 0; p < numPatternsActive; p++) {
+    ArrayList segments = fract[p].getSegments();
+    int numSegments = segments.size();
 
-  mySound = new AudioChannel();
-  mySound.initChannel(numSegments);
+    mySound = new AudioChannel();
+    mySound.initChannel(numSegments);
 
-  Double curVal;
-/*
-  // find peak to normalize audio
-  double peak = 0.01;
-  double dVal;
-  for(int i = 0; i < numSegments; i++) {
-    curVal = (Double)segments.get(i);
-    dVal = curVal.doubleValue();
-    if (dVal > peak)
-      peak = dVal;
-  }    
-*/
+    Double curVal;
+  /*
+    // find peak to normalize audio
+    double peak = 0.01;
+    double dVal;
+    for(int i = 0; i < numSegments; i++) {
+      curVal = (Double)segments.get(i);
+      dVal = curVal.doubleValue();
+      if (dVal > peak)
+        peak = dVal;
+    }    
+  */
 
-  // grab sample values from the fractal
-  float[] buffer = new float[numSegments];
-  for(int i = 0; i < numSegments; i++) {
-    curVal = (Double)segments.get(i);
-    buffer[i] = curVal.floatValue(); // /(float)peak;
+    // grab sample values from the fractal
+    float[] buffer = new float[numSegments];
+    for(int i = 0; i < numSegments; i++) {
+      curVal = (Double)segments.get(i);
+      buffer[i] = curVal.floatValue(); // /(float)peak;
+    }
+
+    mySound.samples = buffer;  
   }
-
-  mySound.samples = buffer;  
   waveDirty = false;
 }
 
