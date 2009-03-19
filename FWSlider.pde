@@ -9,7 +9,10 @@ class FWSlider {
   
   boolean logarithmic;
   
-  public FWSlider() {
+  FWSliderPool parent;
+  
+  public FWSlider(FWSliderPool parent) {
+    this.parent = parent;
   }
   
   void setRange(float minVal, float maxVal) {
@@ -32,7 +35,7 @@ class FWSlider {
   void setLogarithmic() { this.logarithmic = true; }
   
   void draw() {
-      if(mousePressed) {
+      if(parent.lock && mousePressed) {
         this.updatePosition();
       }
       

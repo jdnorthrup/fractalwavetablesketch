@@ -3,6 +3,8 @@ class IterationView {
   public int maxIterationsShown;
   public int curIteration;
   
+  boolean visible;
+  
   private static final int OVERSAMPLE = 32;
 
   public ArrayList segments;
@@ -15,6 +17,8 @@ class IterationView {
     this.y = y;
     this.w = w;
     this.h = h;
+    
+    this.visible = true;
   }
   
   public void setNextIteration(ArrayList segments) { 
@@ -22,7 +26,15 @@ class IterationView {
     this.curIteration++; 
   }
   
+  
+  public void hide() { this.visible = false; }
+  public void show() { this.visible = true; }
+
+  public void setHeight(int h) { this.h = h; }
+  public void setY(int y) { this.y = y; }
+
   public void draw() {
+    if (!this.visible) return;
     if (segments == null) return;
     
     float yStep = h / maxIterationsShown;
@@ -36,7 +48,7 @@ class IterationView {
         color c = color(0.0, belowZero, curValIntensity);
         stroke(c);
         fill(c);
-        rect(x+w*i/numSegments, y+curIteration*yStep, w/numSegments, (yStep*0.9));
+        rect(x+w*i/numSegments, y+curIteration*yStep, w/numSegments, (yStep*0.8));
       }  
     }
   }

@@ -67,8 +67,8 @@ SDrop drop;  // for dropping saved files back into the program to load as "prese
 public ControlP5 controlP5;
 Slider stepsSlider;
 Slider durationSlider;
-FWSliderPool[] patternSliders = new FWSliderPool[2];
-IterationView[] fractView = new IterationView[2];
+FWSliderPool[] patternSliders = new FWSliderPool[NUM_PATTERNS];
+IterationView[] fractView = new IterationView[NUM_PATTERNS];
 
 // create and wire the entire GUI...
 void setup() {
@@ -123,16 +123,16 @@ void setup() {
     fract[i] = new FloatFract();
 
     // bank of vertical pattern sliders that can work as a "draw" area
-    patternSliders[i] = new FWSliderPool(round(stepsSlider.value()), MAX_SLIDERS, LEFT_MARGIN, 50+(i*150/NUM_PATTERNS), width-200, 150/NUM_PATTERNS);
+    patternSliders[i] = new FWSliderPool(round(stepsSlider.value()), MAX_SLIDERS, LEFT_MARGIN, 50+(10+i*150/NUM_PATTERNS), width-200, 150/NUM_PATTERNS);
     // set initial values for pattern sliders
     float[] vals = { 1, 0.5, 1 };
     for (int j = 0; j < patternSliders[i].size(); j++)
       patternSliders[i].slider(j).setValue(vals[j]);
 
     // fractal iteration viewer
-    fractView[i] = new IterationView(fract[i].getSegments(), 10, 0, height-(i*230/NUM_PATTERNS), width, -230/NUM_PATTERNS);
+    fractView[i] = new IterationView(fract[i].getSegments(), 10, 0, height-150, width, 230/NUM_PATTERNS);
   }
-  updateFractalSettings();
+  stereo(1);
 }
 
 /**
@@ -141,14 +141,37 @@ void setup() {
 
 public void mono(float val) {
   numPatternsActive = 1;
+  setSingleView();
 }
 
 public void stereo(float val) {
   numPatternsActive = 2;
+  setDoubleView();
 }
 
 public void morph(float val) {
   numPatternsActive = 2;
+  setDoubleView();
+}
+
+public void setSingleView() {
+  patternSliders[0].setHeight(150);
+  fractView[0].setY(height-30);
+  fractView[0].setHeight(-230);
+  patternSliders[1].hide();
+  fractView[1].hide();
+  waveDirty = true;
+  updateFractalSettings();
+}
+
+public void setDoubleView() {
+  patternSliders[0].setHeight(150/2);
+  fractView[0].setY(height-150);
+  fractView[0].setHeight(-230/2);
+  patternSliders[1].show();
+  fractView[1].show();  
+  waveDirty = true;
+  updateFractalSettings();
 }
 
 public void swap(float val) {
@@ -201,11 +224,20 @@ public void draw() {
 }
 
 
+void mousePressed() {
+  for(int p = 0; p < numPatternsActive; p++)
+    patternSliders[p].mousePressed();  //XXX this could be done by registering the sliders
+}
+
 void mouseReleased() {
+  for(int p = 0; p < numPatternsActive; p++)
+    patternSliders[p].mouseReleased();  //XXX this could be done by registering the sliders
   checkNumSliders();
   checkDuration();
   updateFractalSettings();
 }
+
+
 
 
 void dropEvent(DropEvent theDropEvent) {
@@ -268,11 +300,12 @@ void doRestore(String fileName) {
 }
 
 void checkNumSliders() {
-  if(patternSliders[0].size() != round(stepsSlider.value())) {
-    stopAudio();    
-    for(int p = 0; p < numPatternsActive; p++)
+  for(int p = 0; p < numPatternsActive; p++) {
+    if(patternSliders[p].size() != round(stepsSlider.value())) {
+      stopAudio();    
       patternSliders[p].setSize((round(stepsSlider.value())));
-    Runtime.getRuntime().gc(); 
+      Runtime.getRuntime().gc(); 
+    }
   }
 }  
 
@@ -286,21 +319,26 @@ void checkDuration() {
 
 
 void updateFractalSettings() {
-  boolean updated = false;
+  boolean needsUpdate = false;
+  boolean waveWasDirty = waveDirty;
+  ArrayList[] newPattern = new ArrayList[numPatternsActive];
   for(int p = 0; p < numPatternsActive; p++) {
-    ArrayList newPattern = new ArrayList(patternSliders[p].size());
+    newPattern[p] = new ArrayList(patternSliders[p].size());
     for(int i = 0; i < patternSliders[p].size(); i++) {
-      newPattern.add(new Double(patternSliders[p].slider(i).value()));
+      newPattern[p].add(new Double(patternSliders[p].slider(i).value()));
     }
-    if(waveDirty || (!patternsSame(newPattern, fract[p].pattern()))) {
-      targetIteration = calculateIterationBounds(p);
-      fract[p].setPattern(newPattern); 
-      fractView[p].reset(this);
-      fractView[p].setNextIteration(newPattern);
+    if(waveWasDirty || (!patternsSame(newPattern[p], fract[p].pattern()))) {
+      needsUpdate = true;
     }
   }
   
-  if(updated) {
+  if(needsUpdate) {
+    targetIteration = calculateIterationBounds(0);
+    for(int p = 0; p < numPatternsActive; p++) {
+      fract[p].setPattern(newPattern[p]); 
+      fractView[p].reset(this);
+      fractView[p].setNextIteration(fract[p].getSegments());
+    }
     invalidateAudio();
     Runtime.getRuntime().gc(); 
     playAudio();    
