@@ -88,11 +88,15 @@ void setup() {
   int buttonWidth = 80;
   int buttonHeight = 20;
   int buttonY = 14;
+  int b = 1;
   controlP5.addButton("mono",1,LEFT_MARGIN,buttonY,buttonWidth,buttonHeight);
-  controlP5.addButton("stereo",1,LEFT_MARGIN+buttonWidth+10,buttonY,buttonWidth,buttonHeight);
-  controlP5.addButton("morph",1,LEFT_MARGIN+2*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
-  controlP5.addButton("swap",1,LEFT_MARGIN+3*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
-  
+  controlP5.addButton("stereo",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
+  controlP5.addButton("morph",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
+  controlP5.addButton("swap",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
+  // save button -- only if we're running as an application
+  if(!online) {
+    controlP5.addButton("save",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("Save Audio");
+  }
   
   // horizontal sliders
   stepsSlider = controlP5.addSlider("steps",2,MAX_SLIDERS,3,LEFT_MARGIN,245,width-200,10);
@@ -109,12 +113,7 @@ void setup() {
   controlP5.addTextlabel("1", "1", (LEFT_MARGIN + width-200)+10, 50);
   controlP5.addTextlabel("0", "0", (LEFT_MARGIN + width-200)+10, 123);
   controlP5.addTextlabel("-1", "-1", (LEFT_MARGIN + width-200)+8, 193);
-
-  // save button -- only if we're running as an application
-  if(!online) {
-    controlP5.Button saveButton = controlP5.addButton("save",1,width-99,309,80,20);
-    saveButton.setLabel("Save Audio");
-  }
+  
 
   // loop through to create the pattern-specific bits of the system
   // since for stereo and morphs we need multiples of all of this
@@ -123,7 +122,7 @@ void setup() {
     fract[i] = new FloatFract();
 
     // bank of vertical pattern sliders that can work as a "draw" area
-    patternSliders[i] = new FWSliderPool(round(stepsSlider.value()), MAX_SLIDERS, LEFT_MARGIN, 50+(10+i*150/NUM_PATTERNS), width-200, 150/NUM_PATTERNS);
+    patternSliders[i] = new FWSliderPool(round(stepsSlider.value()), MAX_SLIDERS, LEFT_MARGIN, 50+(i*(10+150/NUM_PATTERNS)), width-200, 150/NUM_PATTERNS);
     // set initial values for pattern sliders
     float[] vals = { 1, 0.5, 1 };
     for (int j = 0; j < patternSliders[i].size(); j++)
@@ -155,7 +154,7 @@ public void morph(float val) {
 }
 
 public void setSingleView() {
-  patternSliders[0].setHeight(150);
+  patternSliders[0].setHeight(160);
   fractView[0].setY(height-30);
   fractView[0].setHeight(-230);
   patternSliders[1].hide();
@@ -165,6 +164,7 @@ public void setSingleView() {
 }
 
 public void setDoubleView() {
+  patternSliders[0].clear();
   patternSliders[0].setHeight(150/2);
   fractView[0].setY(height-150);
   fractView[0].setHeight(-230/2);
@@ -175,6 +175,13 @@ public void setDoubleView() {
 }
 
 public void swap(float val) {
+  for (int i = 0; i < patternSliders[0].size(); i++) {
+    float tempVal = patternSliders[0].slider(i).value();
+    patternSliders[0].slider(i).setValue(patternSliders[1].slider(i).value());
+    patternSliders[1].slider(i).setValue(tempVal);
+  }
+  waveDirty = true;
+  updateFractalSettings();
 }
 
 

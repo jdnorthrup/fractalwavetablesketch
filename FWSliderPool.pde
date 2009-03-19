@@ -68,13 +68,17 @@ class FWSliderPool {
     }    
   }
   
+  public void clear() {
+    stroke(0);
+    fill(0);
+    rect(x,y,w,h);
+  }
+  
   public void draw() {
     if(!this.visible)
       return;
       
-    fill(0);
-    stroke(0);
-    rect(x, y, w, h);
+    clear();
     
     for(int i = 0; i < size; i++)
       sliders[i].draw();      
