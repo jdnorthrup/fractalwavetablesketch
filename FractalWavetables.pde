@@ -54,10 +54,7 @@ int patternOffset = 1;
 float curDuration = 0;
 int targetIteration = 0;
 
-// audio system
-AudioChannel mySound; 
-boolean waveDirty = true;
-boolean audioPlaying = true;
+FWAudio playback;
 
 /*
  * Control
@@ -76,6 +73,8 @@ ArrayList mouseListeners = new ArrayList();
 // create and wire the entire GUI...
 void setup() {
   Ess.start(this);
+  
+  playback = new FWAudio();
 
   // drag-and-drop handler for file imports
   drop = new SDrop(this);
@@ -184,7 +183,7 @@ public void setSingleView(int num) {
 
   fractView[1-num].hide();
 
-  waveDirty = true;
+  playback.waveDirty = true;
   updateFractalSettings();
 }
 
@@ -200,7 +199,7 @@ public void setDoubleView() {
     fractView[p].setHeight((p==0?-1:1)*230/NUM_PATTERNS);
     fractView[p].show();  
   }
-  waveDirty = true;
+  playback.waveDirty = true;
   updateFractalSettings();
 }
 
@@ -210,7 +209,7 @@ public void swap(float val) {
     patternSliders[0].slider(i).setValue(patternSliders[1].slider(i).value());
     patternSliders[1].slider(i).setValue(tempVal);
   }
-  waveDirty = true;
+  playback.waveDirty = true;
   updateFractalSettings();
 }
 
@@ -243,7 +242,7 @@ public void draw() {
   for(int p = 0; p < numPatternsActive; p++)
     patternSliders[p+patternOffset].draw();
 
-  drawPlayhead();
+  playback.drawPlayhead();
   
   // process any updates
   boolean stillIterating = false;
@@ -256,10 +255,17 @@ public void draw() {
       stillIterating = true;
     }
   } 
-  if (!stillIterating && waveDirty && audioPlaying) {
-    stopAudio();
-    writeAudio();
-    playAudio();
+  if (!stillIterating && playback.waveDirty && playback.audioPlaying) {
+    playback.stopAudio();
+    if (numPatternsActive == 2) {
+      playback.writeStereoAudio(fract[0].getSegments(), fract[1].getSegments());      
+    } else {
+      for(int p = 0; p < numPatternsActive; p++) {
+        int pat = p + patternOffset;
+        playback.writeAudio(fract[pat].getSegments(), p);
+      }
+    }
+    playback.playAudio();
   }  
 }
 
@@ -298,7 +304,7 @@ void dropEvent(DropEvent theDropEvent) {
  */ 
 
 void doSave() {
-  stopAudio();
+  playback.stopAudio();
   //XXX need stereo saving scheme
   String defaultFilename = "fw_"+fract[0].toString();
   if(defaultFilename.length() > 250) {
@@ -308,9 +314,9 @@ void doSave() {
   
   String path = "" + defaultFilename;
   print("Save path: " + path + "\n");  
-  writeSoundFile(path);
+  playback.writeSoundFile(path, 0);
   
-  playAudio();
+  playback.playAudio();
 }
 
 void doRestore(String fileName) {
@@ -318,8 +324,8 @@ void doRestore(String fileName) {
     // looks OK-ish
     fileName = fileName.substring(3, fileName.length()-4);  // strip pre- and suffix
     //print("restoring seed:" + fileName);
-    stopAudio();
-    invalidateAudio();
+    playback.stopAudio();
+    playback.invalidateAudio();
     FloatFract[] newFract = new FloatFract[2];
     for(int p = 0; p < numPatternsActive; p++) {
       newFract[p] = new FloatFract(fileName); //XXX fix this
@@ -334,14 +340,14 @@ void doRestore(String fileName) {
       }
     }
     updateFractalSettings();
-    playAudio();
+    playback.playAudio();
   }
 }
 
 void checkNumSliders() {
   for(int p = 0; p < NUM_PATTERNS; p++) {
     if(patternSliders[p].size() != round(stepsSlider.value())) {
-      stopAudio();    
+      playback.stopAudio();    
       patternSliders[p].setSize((round(stepsSlider.value())));
       Runtime.getRuntime().gc(); 
     }
@@ -352,14 +358,14 @@ void checkDuration() {
   if(curDuration != durationSlider.value()) {
     curDuration = durationSlider.value();
     if(targetIteration != calculateIterationBounds(0))
-      waveDirty = true;
+      playback.waveDirty = true;
   }
 }
 
 
 void updateFractalSettings() {
   boolean needsUpdate = false;
-  boolean waveWasDirty = waveDirty;
+  boolean waveWasDirty = playback.waveDirty;
   ArrayList[] newPattern = new ArrayList[numPatternsActive];
   for(int p = 0; p < numPatternsActive; p++) {
     newPattern[p] = new ArrayList(patternSliders[p+patternOffset].size());
@@ -378,9 +384,9 @@ void updateFractalSettings() {
       fractView[p+patternOffset].reset(this);
       fractView[p+patternOffset].setNextIteration(fract[p+patternOffset].getSegments());
     }
-    invalidateAudio();
+    playback.invalidateAudio();
     Runtime.getRuntime().gc(); 
-    playAudio();    
+    playback.playAudio();    
   }
 }
 

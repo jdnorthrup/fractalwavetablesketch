@@ -1,22 +1,32 @@
-/*
- * Audio
- */
+public class FWAudio {
+ 
+  public AudioChannel[] buffers = new AudioChannel[2];
+  public boolean waveDirty = false;
+  public boolean audioPlaying = false;
+ 
+  public FWAudio() {
+  }
+  
+  public void writeStereoAudio(ArrayList l, ArrayList r) {
+    writeAudio(l, 0);
+    writeAudio(r, 1);
+    buffers[0].pan(Ess.LEFT);
+    buffers[1].pan(Ess.RIGHT);
+  }
+  
+  public void writeAudio(ArrayList samples, int bufferNumber) {
+    int numSamples = samples.size();
 
-public void writeAudio() {
-  for(int p = 0; p < numPatternsActive; p++) {
-    ArrayList segments = fract[p].getSegments();
-    int numSegments = segments.size();
-
-    mySound = new AudioChannel();
-    mySound.initChannel(numSegments);
+    AudioChannel mySound = buffers[bufferNumber] = new AudioChannel();    
+    mySound.initChannel(numSamples);
 
     Double curVal;
   /*
     // find peak to normalize audio
     double peak = 0.01;
     double dVal;
-    for(int i = 0; i < numSegments; i++) {
-      curVal = (Double)segments.get(i);
+    for(int i = 0; i < numSamples; i++) {
+      curVal = (Double)samples.get(i);
       dVal = curVal.doubleValue();
       if (dVal > peak)
         peak = dVal;
@@ -24,62 +34,69 @@ public void writeAudio() {
   */
 
     // grab sample values from the fractal
-    float[] buffer = new float[numSegments];
-    for(int i = 0; i < numSegments; i++) {
-      curVal = (Double)segments.get(i);
+    float[] buffer = new float[numSamples];
+    for(int i = 0; i < numSamples; i++) {
+      curVal = (Double)samples.get(i);
       buffer[i] = curVal.floatValue(); // /(float)peak;
     }
 
-    mySound.samples = buffer;  
+    mySound.samples = buffer;
+    mySound.pan(0);
+    waveDirty = false;
   }
-  waveDirty = false;
-}
 
-public void writeSoundFile(String filename) {
-   AudioFile myFile = new AudioFile();
-   myFile.open(filename, (float)SR, Ess.WRITE);   
-   myFile.write(mySound.samples);
-   myFile.close();   
-}
+  public void writeSoundFile(String filename, int bufferNumber) {
+     AudioFile myFile = new AudioFile();
+     myFile.open(filename, (float)SR, Ess.WRITE);   
+     myFile.write(buffers[bufferNumber].samples);
+     myFile.close();   
+  }
 
-// sound buffer can be invalid, but the system
-// is still trying to play. this basically says
-// we need to regenerate the audio
-public void invalidateAudio() {
-  if (mySound != null)
-    mySound.stop(); 
-  waveDirty = true;
-}  
+  // sound buffer can be invalid, but the system
+  // is still trying to play. this basically says
+  // we need to regenerate the audio
+  public void invalidateAudio() {
+    stopBuffers();
+    buffers[0] = buffers[1] = null;
+    waveDirty = true;
+  }  
 
-void stopAudio() {
-  if (mySound != null)
-    mySound.stop();
-  audioPlaying = false;
-}
+  public void stopAudio() {
+    stopBuffers();
+    audioPlaying = false;
+  }
 
-public void playAudio() {
-  audioPlaying = true;
+  public void playAudio() {
+    audioPlaying = true;
   
-  if(waveDirty) return;
+    if(waveDirty) return;
   
-  if (mySound == null) {
-    mySound = new AudioChannel();
-  } 
-  else { 
-    mySound.stop();
+    for(int i = 0; i < buffers.length; i++) {
+      if (buffers[i] != null) {
+        buffers[i].stop();
+        buffers[i].play(Ess.FOREVER); 
+      }
+    }
   }
 
-  mySound.play(Ess.FOREVER);
-}
-
-
-void drawPlayhead() {
-  if (mySound != null) {
-    fill(0);
-    stroke(0);
-    rect(0, height, width, -20);
-    float phase = mySound.cue * 1.0 / mySound.size;
-    stroke(0.25, 0.8, 1);
-    line(width*phase, height, width*phase, height-19);
+  public void drawPlayhead() {
+    for(int i = 0; i < buffers.length; i++) {
+      if (buffers[i] != null) {
+        fill(0);
+        stroke(0);
+        rect(0, height, width, -20);
+        float phase = buffers[i].cue * 1.0 / buffers[i].size;
+        stroke(0.25, 0.8, 1);
+        line(width*phase, height, width*phase, height-19);
+      }
+    }
   }
+  
+  private void stopBuffers() {
+    for(int i = 0; i < buffers.length; i++) {
+      if (buffers[i] != null)
+        buffers[i].stop(); 
+    }    
+  }
+  
 }
