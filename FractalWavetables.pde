@@ -47,6 +47,7 @@ final int LEFT_MARGIN = 100;
 final int NUM_PATTERNS = 2;
 FloatFract[] fract = new FloatFract[NUM_PATTERNS];  // to support stereo or morphing
 int numPatternsActive = 1;
+int patternOffset = 1;
 
 
 // pattern size / timing data
@@ -70,6 +71,8 @@ Slider durationSlider;
 FWSliderPool[] patternSliders = new FWSliderPool[NUM_PATTERNS];
 IterationView[] fractView = new IterationView[NUM_PATTERNS];
 
+ArrayList mouseListeners = new ArrayList();
+
 // create and wire the entire GUI...
 void setup() {
   Ess.start(this);
@@ -89,7 +92,8 @@ void setup() {
   int buttonHeight = 20;
   int buttonY = 14;
   int b = 1;
-  controlP5.addButton("mono",1,LEFT_MARGIN,buttonY,buttonWidth,buttonHeight);
+  controlP5.addButton("a",1,LEFT_MARGIN,buttonY,buttonWidth,buttonHeight);
+  controlP5.addButton("b",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
   controlP5.addButton("stereo",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
   controlP5.addButton("morph",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
   controlP5.addButton("swap",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
@@ -122,15 +126,17 @@ void setup() {
     fract[i] = new FloatFract();
 
     // bank of vertical pattern sliders that can work as a "draw" area
-    patternSliders[i] = new FWSliderPool(round(stepsSlider.value()), MAX_SLIDERS, LEFT_MARGIN, 50+(i*(10+150/NUM_PATTERNS)), width-200, 150/NUM_PATTERNS);
+    patternSliders[i] = new FWSliderPool(round(stepsSlider.value()), MAX_SLIDERS, LEFT_MARGIN, 0, width-200, 0);
     // set initial values for pattern sliders
     float[] vals = { 1, 0.5, 1 };
     for (int j = 0; j < patternSliders[i].size(); j++)
       patternSliders[i].slider(j).setValue(vals[j]);
 
     // fractal iteration viewer
-    fractView[i] = new IterationView(fract[i].getSegments(), 10, 0, height-150, width, 230/NUM_PATTERNS);
+    fractView[i] = new IterationView(fract[i].getSegments(), 10, 0, 0, width, 0);
+    mouseListeners.add(patternSliders[i]);
   }
+  
   stereo(1);
 }
 
@@ -138,38 +144,62 @@ void setup() {
   * controlP5 event callbacks
   */
 
-public void mono(float val) {
+public void a(float val) {
   numPatternsActive = 1;
-  setSingleView();
+  patternOffset = 0;
+  setSingleView(0);
+}
+
+public void b(float val) {
+  numPatternsActive = 1;
+  patternOffset = 1;
+  setSingleView(1);
 }
 
 public void stereo(float val) {
   numPatternsActive = 2;
+  patternOffset = 0;
   setDoubleView();
 }
 
 public void morph(float val) {
   numPatternsActive = 2;
+  patternOffset = 0;
   setDoubleView();
 }
 
-public void setSingleView() {
-  patternSliders[0].setHeight(160);
-  fractView[0].setY(height-30);
-  fractView[0].setHeight(-230);
-  patternSliders[1].hide();
-  fractView[1].hide();
+public void setSingleView(int num) {
+  patternSliders[num].clear();  
+  patternSliders[1-num].clear();  
+
+  patternSliders[num].setHeight(160);
+  patternSliders[num].setY(50);
+  patternSliders[num].show();
+
+  patternSliders[1-num].hide();
+  
+  fractView[num].setY(height-30);
+  fractView[num].setHeight(-230);
+  fractView[num].show();
+
+  fractView[1-num].hide();
+
   waveDirty = true;
   updateFractalSettings();
 }
 
 public void setDoubleView() {
-  patternSliders[0].clear();
-  patternSliders[0].setHeight(150/2);
-  fractView[0].setY(height-150);
-  fractView[0].setHeight(-230/2);
-  patternSliders[1].show();
-  fractView[1].show();  
+  for(int p = 0; p < numPatternsActive; p++) {
+    patternSliders[p].clear();
+    patternSliders[p].setY(50+(p*(10+150/NUM_PATTERNS)));
+    patternSliders[p].setHeight(150/NUM_PATTERNS);
+    patternSliders[p].show();
+
+    fractView[p].clear();
+    fractView[p].setY(height-150);  
+    fractView[p].setHeight((p==0?-1:1)*230/NUM_PATTERNS);
+    fractView[p].show();  
+  }
   waveDirty = true;
   updateFractalSettings();
 }
@@ -211,19 +241,22 @@ public void stop() {
 
 public void draw() {
   for(int p = 0; p < numPatternsActive; p++)
-    patternSliders[p].draw();
+    patternSliders[p+patternOffset].draw();
 
   drawPlayhead();
   
   // process any updates
-  if(fract[0].iteration() < targetIteration) {
-    for(int p = 0; p < numPatternsActive; p++) {
-      fractView[p].draw();
-      fract[p].iterate();
-      fractView[p].setNextIteration(fract[p].getSegments());
+  boolean stillIterating = false;
+  for(int p = 0; p < numPatternsActive; p++) {
+    int pat = p + patternOffset;
+    if(fract[pat].iteration() < targetIteration) {
+      fractView[pat].draw();
+      fract[pat].iterate();
+      fractView[pat].setNextIteration(fract[pat].getSegments());
+      stillIterating = true;
     }
   } 
-  else if (waveDirty && audioPlaying) {
+  if (!stillIterating && waveDirty && audioPlaying) {
     stopAudio();
     writeAudio();
     playAudio();
@@ -232,18 +265,17 @@ public void draw() {
 
 
 void mousePressed() {
-  for(int p = 0; p < numPatternsActive; p++)
-    patternSliders[p].mousePressed();  //XXX this could be done by registering the sliders
+  for(int i = 0; i < mouseListeners.size(); i++)
+    ((MouseListener)mouseListeners.get(i)).mousePressed();  
 }
 
 void mouseReleased() {
-  for(int p = 0; p < numPatternsActive; p++)
-    patternSliders[p].mouseReleased();  //XXX this could be done by registering the sliders
+  for(int i = 0; i < mouseListeners.size(); i++)
+    ((MouseListener)mouseListeners.get(i)).mouseReleased();  
   checkNumSliders();
   checkDuration();
   updateFractalSettings();
 }
-
 
 
 
@@ -307,7 +339,7 @@ void doRestore(String fileName) {
 }
 
 void checkNumSliders() {
-  for(int p = 0; p < numPatternsActive; p++) {
+  for(int p = 0; p < NUM_PATTERNS; p++) {
     if(patternSliders[p].size() != round(stepsSlider.value())) {
       stopAudio();    
       patternSliders[p].setSize((round(stepsSlider.value())));
@@ -330,11 +362,11 @@ void updateFractalSettings() {
   boolean waveWasDirty = waveDirty;
   ArrayList[] newPattern = new ArrayList[numPatternsActive];
   for(int p = 0; p < numPatternsActive; p++) {
-    newPattern[p] = new ArrayList(patternSliders[p].size());
-    for(int i = 0; i < patternSliders[p].size(); i++) {
-      newPattern[p].add(new Double(patternSliders[p].slider(i).value()));
+    newPattern[p] = new ArrayList(patternSliders[p+patternOffset].size());
+    for(int i = 0; i < patternSliders[p+patternOffset].size(); i++) {
+      newPattern[p].add(new Double(patternSliders[p+patternOffset].slider(i).value()));
     }
-    if(waveWasDirty || (!patternsSame(newPattern[p], fract[p].pattern()))) {
+    if(waveWasDirty || (!patternsSame(newPattern[p], fract[p+patternOffset].pattern()))) {
       needsUpdate = true;
     }
   }
@@ -342,9 +374,9 @@ void updateFractalSettings() {
   if(needsUpdate) {
     targetIteration = calculateIterationBounds(0);
     for(int p = 0; p < numPatternsActive; p++) {
-      fract[p].setPattern(newPattern[p]); 
-      fractView[p].reset(this);
-      fractView[p].setNextIteration(fract[p].getSegments());
+      fract[p+patternOffset].setPattern(newPattern[p]); 
+      fractView[p+patternOffset].reset(this);
+      fractView[p+patternOffset].setNextIteration(fract[p+patternOffset].getSegments());
     }
     invalidateAudio();
     Runtime.getRuntime().gc(); 

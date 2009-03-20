@@ -1,4 +1,4 @@
-class FWSliderPool {
+class FWSliderPool implements MouseListener {
   protected FWSlider[] sliders;
   protected int size;
   
@@ -32,8 +32,10 @@ class FWSliderPool {
     return sliders[index];
   }
 
+  public void mouseDragged() {}
+  
   public void mousePressed() {
-    if(this.mouseOver())
+    if(this.visible && this.mouseOver())
       this.lock = true;
   }
   
@@ -58,6 +60,13 @@ class FWSliderPool {
     // clear remaining
     for(i = i; i < sliders.length; i++) {
       sliders[i].setValue(0);
+    }
+  }
+  
+  public void setY(int y) {    
+    this.y = y;
+    for(int i = 0; i < size; i++) {
+      sliders[i].y = y;
     }
   }
 

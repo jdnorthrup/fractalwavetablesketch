@@ -53,12 +53,15 @@ class IterationView {
     }
   }
 
+  public void clear() {
+    fill(0);
+    stroke(0);
+    rect(x, y, w, h);   
+  }
+
   public void reset(PApplet theApplet) {
     curIteration = 0;
     segments = null;
-    
-    fill(0);
-    stroke(0);
-    rect(x, y, w, h);
-  }
+    clear();
+   }
 }
