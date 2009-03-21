@@ -6,9 +6,9 @@
  * and use the pattern as a fractal step sequencer.
  * <br/><br/>If the UI freezes, try reloading the page. 
  * <br/><br/>If you like the sounds, you can download and run the app locally to save out files. 
- * <p><a href="http://www.raintone.com/code/processing/FractalWavetables/application.macosx.zip">Mac OS X version</a><br />
- * <a href="http://www.raintone.com/code/processing/FractalWavetables/application.windows.zip">Windows version</a><br />
- * <a href="http://www.raintone.com/code/processing/FractalWavetables/application.linux.zip">Linux version</a></p>
+ * <p><a href="http://www.raintone.com/code/processing/FractalWavetables2/application.macosx.zip">Mac OS X version</a><br />
+ * <a href="http://www.raintone.com/code/processing/FractalWavetables2/application.windows.zip">Windows version</a><br />
+ * <a href="http://www.raintone.com/code/processing/FractalWavetables2/application.linux.zip">Linux version</a></p>
  * <a href="http://www.raintone.com/">Back to Raintone.com</a>
  * <br/></br>
  * <br/><br/>Thanks to Terran Olson's work on <a href="http://www.halfcadence.net/audio-fractals/">audio fractals</a> that inspired this sketch.
@@ -51,7 +51,7 @@ int numPatternsActive = 1;
 int patternOffset = 1;
 boolean morphing = false;
 
-boolean update = true;
+public boolean update = true;
 
 // pattern size / timing data
 float curDuration = 0;
