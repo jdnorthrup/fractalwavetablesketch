@@ -95,7 +95,7 @@ void setup() {
   controlP5.addButton("a",1,LEFT_MARGIN,buttonY,buttonWidth,buttonHeight);
   controlP5.addButton("b",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
   controlP5.addButton("stereo",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("stereo a+b");
-  controlP5.addButton("morph",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("morph a<->b");
+  controlP5.addButton("morph",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
   controlP5.addButton("swap",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("swap a<->b");
   // save button -- only if we're running as an application
   if(!online) {
@@ -310,16 +310,24 @@ void dropEvent(DropEvent theDropEvent) {
 
 void doSave() {
   playback.stopAudio();
-  //XXX need stereo saving scheme
-  String defaultFilename = "fw_"+fract[0].toString();
-  if(defaultFilename.length() > 250) {
-    defaultFilename = defaultFilename.substring(0, 250);
-  }
-  defaultFilename += ".aif";
+  String defaultFilename = "";
   
-  String path = "" + defaultFilename;
-  print("Save path: " + path + "\n");  
-  playback.writeSoundFile(path, 0);
+  for(int p = 0; p < numPatternsActive; p++) {
+    int pat = p + patternOffset;
+    
+    defaultFilename = "fw_"+fract[pat].toString();
+    if(morphing)
+      defaultFilename += "->"+fract[1-pat].toString();
+      
+    if(defaultFilename.length() > 250) {
+      defaultFilename = defaultFilename.substring(0, 250);
+    }
+    defaultFilename += ".aif";
+  
+    String path = "" + defaultFilename;
+    print("Save path: " + path + "\n");  
+    playback.writeSoundFile(path, pat);
+  }
   
   playback.playAudio();
 }
@@ -331,19 +339,14 @@ void doRestore(String fileName) {
     //print("restoring seed:" + fileName);
     playback.stopAudio();
     playback.invalidateAudio();
-    FloatFract[] newFract = new FloatFract[2];
-    for(int p = 0; p < numPatternsActive; p++) {
-      newFract[p] = new FloatFract(fileName); //XXX fix this
-      // copy seed onto UI sliders
-      stepsSlider.setValue(newFract[p].pattern().size());
-    }
+
+    FloatFract newFract = new FloatFract(fileName);
+    // copy seed onto UI sliders
+    stepsSlider.setValue(newFract.pattern().size());
     checkNumSliders();
     checkDuration();
-    for(int p = 0; p < numPatternsActive; p++) {
-      for(int i = 0; i < patternSliders[p].size(); i++) {
-        patternSliders[p].slider(i).setValue(((Double)newFract[p].pattern().get(i)).floatValue());
-      }
-    }
+    for(int i = 0; i < patternSliders[patternOffset].size(); i++)
+      patternSliders[patternOffset].slider(i).setValue(((Double)newFract.pattern().get(i)).floatValue());
     updateFractalSettings();
     playback.playAudio();
   }
