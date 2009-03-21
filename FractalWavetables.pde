@@ -12,7 +12,7 @@
  * <a href="http://www.raintone.com/">Back to Raintone.com</a>
  * <br/></br>
  * <br/><br/>Thanks to Terran Olson's work on <a href="http://www.halfcadence.net/audio-fractals/">audio fractals</a> that inspired this sketch.
- * Thanks to Krister Olsson's <a href="http://www.tree-axis.com/Ess/">Ess library</a> for the sound support.
+ * Thanks to Krister Olsson's <a href="http://www.tree-axis.com/Ess/">Ess library</a> for the sound support, and Andreas Schlegel's <a href="http://www.sojamo.de/libraries/controlP5/">controlP5 library</a> for UI.
  * <br/><br/>
  */
 
