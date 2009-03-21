@@ -51,6 +51,8 @@ int numPatternsActive = 1;
 int patternOffset = 1;
 boolean morphing = false;
 
+boolean update = true;
+
 // pattern size / timing data
 float curDuration = 0;
 int targetIteration = 0;
@@ -101,6 +103,15 @@ void setup() {
   if(!online) {
     controlP5.addButton("save",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("Save Audio");
   }
+  
+  // play toggles
+  buttonWidth = 20;
+  buttonHeight = 20;
+  buttonY = 300;
+  b = 0;
+  controlP5.addToggle("looping",true,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("loop");
+  controlP5.addToggle("mute",false,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
+  controlP5.addToggle("update",true,LEFT_MARGIN+(1+b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("autoupdate");
   
   // horizontal sliders
   stepsSlider = controlP5.addSlider("steps",2,MAX_SLIDERS,3,LEFT_MARGIN,245,width-200,10);
@@ -170,6 +181,14 @@ public void morph(float val) {
   patternOffset = 0;
   morphing = true;
   setDoubleView();
+}
+
+public void looping(boolean val) {
+  playback.setLooping(val);
+}
+
+public void mute(boolean val) {
+  playback.setMute(val);
 }
 
 public void setSingleView(int num) {
@@ -250,7 +269,9 @@ public void draw() {
   playback.drawPlayhead();
   
   // process any updates
-  boolean stillIterating = false;
+  if(!update)
+    return;
+  boolean stillIterating = false;    
   for(int p = 0; p < numPatternsActive; p++) {
     int pat = p + patternOffset;
     if(fract[pat].iteration() < targetIteration) {

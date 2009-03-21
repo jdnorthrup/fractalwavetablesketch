@@ -3,6 +3,7 @@ public class FWAudio {
   public AudioChannel[] buffers = new AudioChannel[2];
   public boolean waveDirty = false;
   public boolean audioPlaying = false;
+  public boolean looping = true;
  
   public FWAudio() {
   }
@@ -74,7 +75,23 @@ public class FWAudio {
     for(int i = 0; i < buffers.length; i++) {
       if (buffers[i] != null) {
         buffers[i].stop();
-        buffers[i].play(Ess.FOREVER); 
+        buffers[i].play(looping ? Ess.FOREVER : 1); 
+      }
+    }
+  }
+
+  public void setLooping(boolean v) {
+    if((v && !looping) || (!v && looping)) {
+      this.looping = v;
+      stopBuffers();
+      playAudio();
+    }
+  }
+
+  public void setMute(boolean v) {
+    for(int i = 0; i < buffers.length; i++) {
+      if (buffers[i] != null) {
+        buffers[i].mute(v);
       }
     }
   }
