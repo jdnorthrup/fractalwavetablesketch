@@ -5,6 +5,7 @@
 //
 class FloatFract {
   ArrayList pattern;
+  ArrayList morphPattern;
   ArrayList segments;
   int iteration;
 
@@ -36,6 +37,10 @@ class FloatFract {
     pattern = c; 
   }  
   
+  void setMorphPattern(ArrayList m) {
+    morphPattern = m;
+  }
+
   ArrayList pattern() { return this.pattern; }
   
   ArrayList getSegments() { 
@@ -43,17 +48,41 @@ class FloatFract {
   }
 
   void iterate() {
+    if (morphPattern != null) {
+      iterateMorph();
+      return;
+    }
+      
     ArrayList newSegments = new ArrayList();
-    double scale = 1.0/(pattern.size()*(iteration+1));
     for(int i = 0; i < segments.size(); i++) {
       Double oldVal = (Double)segments.get(i);
       for(int j = 0; j < pattern.size(); j++) {
-        newSegments.add((Double)pattern.get(j) * oldVal); //  * scale  + oldVal);
+        newSegments.add((Double)pattern.get(j) * oldVal);
       }
     }
     segments = newSegments;    
     iteration++;
   }
+
+  void iterateMorph() {
+    ArrayList newSegments = new ArrayList();
+    double phase = 0;
+    double delta = 1.0/((segments.size())*(pattern.size())-1.0);
+    double lerpedWeight = 0.0;
+    for(int i = 0; i < segments.size(); i++) {
+      Double oldVal = (Double)segments.get(i);
+      for(int j = 0; j < pattern.size(); j++) {
+        Double patternVal = (Double)pattern.get(j);
+        Double morphPatternVal = (Double)morphPattern.get(j);
+        lerpedWeight = (1.0-phase)*(patternVal) + (phase)*(morphPatternVal);
+        newSegments.add(lerpedWeight * oldVal);
+        phase += delta;
+      }
+    }
+    segments = newSegments;    
+    iteration++;
+  }
+
 
   int iteration() { 
     return iteration; 

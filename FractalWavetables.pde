@@ -26,6 +26,7 @@
 // v3 - code cleanup
 // v4 - switched to controlP5 library for most of GUI.
 //      refactored code -- FWAudio could become class
+// v5 - added a, b, stereo a+b and morph a->b modes
 //
 // 
 
@@ -45,10 +46,10 @@ final int LEFT_MARGIN = 100;
 
 // fractal data
 final int NUM_PATTERNS = 2;
-FloatFract[] fract = new FloatFract[NUM_PATTERNS];  // to support stereo or morphing
+FloatFract[] fract = new FloatFract[NUM_PATTERNS];  // to support stereo
 int numPatternsActive = 1;
 int patternOffset = 1;
-
+boolean morphing = false;
 
 // pattern size / timing data
 float curDuration = 0;
@@ -87,15 +88,15 @@ void setup() {
   controlP5 = new ControlP5(this);
   
   // mode buttons
-  int buttonWidth = 80;
+  int buttonWidth = 77;
   int buttonHeight = 20;
   int buttonY = 14;
   int b = 1;
   controlP5.addButton("a",1,LEFT_MARGIN,buttonY,buttonWidth,buttonHeight);
   controlP5.addButton("b",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
-  controlP5.addButton("stereo",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
-  controlP5.addButton("morph",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
-  controlP5.addButton("swap",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
+  controlP5.addButton("stereo",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("stereo a+b");
+  controlP5.addButton("morph",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("morph a<->b");
+  controlP5.addButton("swap",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("swap a<->b");
   // save button -- only if we're running as an application
   if(!online) {
     controlP5.addButton("save",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("Save Audio");
@@ -146,24 +147,28 @@ void setup() {
 public void a(float val) {
   numPatternsActive = 1;
   patternOffset = 0;
+  morphing = false;
   setSingleView(0);
 }
 
 public void b(float val) {
   numPatternsActive = 1;
   patternOffset = 1;
+  morphing = false;
   setSingleView(1);
 }
 
 public void stereo(float val) {
   numPatternsActive = 2;
   patternOffset = 0;
+  morphing = false;
   setDoubleView();
 }
 
 public void morph(float val) {
   numPatternsActive = 2;
   patternOffset = 0;
+  morphing = true;
   setDoubleView();
 }
 
@@ -368,6 +373,9 @@ void updateFractalSettings() {
   boolean waveWasDirty = playback.waveDirty;
   ArrayList[] newPattern = new ArrayList[numPatternsActive];
   for(int p = 0; p < numPatternsActive; p++) {
+    if(!morphing)
+      fract[p+patternOffset].setMorphPattern(null);
+
     newPattern[p] = new ArrayList(patternSliders[p+patternOffset].size());
     for(int i = 0; i < patternSliders[p+patternOffset].size(); i++) {
       newPattern[p].add(new Double(patternSliders[p+patternOffset].slider(i).value()));
@@ -381,6 +389,9 @@ void updateFractalSettings() {
     targetIteration = calculateIterationBounds(0);
     for(int p = 0; p < numPatternsActive; p++) {
       fract[p+patternOffset].setPattern(newPattern[p]); 
+      if(morphing) {
+        fract[p+patternOffset].setMorphPattern(newPattern[1-p]); 
+      }
       fractView[p+patternOffset].reset(this);
       fractView[p+patternOffset].setNextIteration(fract[p+patternOffset].getSegments());
     }
