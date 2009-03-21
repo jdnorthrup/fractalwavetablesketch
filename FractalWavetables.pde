@@ -153,9 +153,9 @@ void setup() {
   stereo(1);
 }
 
-/**
-  * controlP5 event callbacks
-  */
+/*
+ * controlP5 event callbacks
+ */
 
 public void a(float val) {
   numPatternsActive = 1;
@@ -254,9 +254,9 @@ public void save(float val) {
 }
 
 
-/**
-  * applet events
-  */
+/*
+ * applet events
+ */
 
 public void stop() {
   Ess.stop();
