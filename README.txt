@@ -32,9 +32,15 @@ Basic Usage
 
 * Try setting the number of steps to an interesting metrical unit -- say "8" -- and use the pattern as a fractal step sequencer.
 
+* A and B buttons select the current pattern.
+
+* Stereo lets you play and edit both patterns simultaneously.
+
+* Morph mode renders two morphs: A -> B in the left channel, and B -> A in the right channel.
+
 * The Save button will put a specially-named audio file in the same directory as the program.  
 
-* If you drag-and-drop these specially-named audio files back onto the app, it will reload the same fractal pattern used to generate the audio.  There may be some UI glitches when you do this -- not sure why that's happening.
+* If you drag-and-drop these specially-named audio files back onto the app, it will reload the same fractal pattern used to generate the audio  This won't work currently for files saved out in "morph" mode.
 
 Have Fun!
 
@@ -53,3 +59,5 @@ Props
 * Thanks to Terran Olson's work on audio fractals that inspired this sketch. See http://www.halfcadence.net/audio-fractals/ for more info.
 
 * Thanks to Krister Olsson's Ess library for the sound support. http://www.tree-axis.com/Ess
+
+* Thanks for Andreas Schlegel's awesome controlP5 library for UI. http://www.sojamo.de/libraries/controlP5/
