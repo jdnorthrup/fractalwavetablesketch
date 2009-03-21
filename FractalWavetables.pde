@@ -96,7 +96,7 @@ void setup() {
   int b = 1;
   controlP5.addButton("a",1,LEFT_MARGIN,buttonY,buttonWidth,buttonHeight);
   controlP5.addButton("b",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
-  controlP5.addButton("stereo",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("stereo a+b");
+  controlP5.addButton("stereo",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("stereo");
   controlP5.addButton("morph",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
   controlP5.addButton("swap",1,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("swap a<->b");
   // save button -- only if we're running as an application
@@ -109,8 +109,8 @@ void setup() {
   buttonHeight = 20;
   buttonY = 300;
   b = 0;
-  controlP5.addToggle("looping",true,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("loop");
   controlP5.addToggle("mute",false,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight);
+    controlP5.addToggle("looping",true,LEFT_MARGIN+(b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("loop");
   controlP5.addToggle("update",true,LEFT_MARGIN+(1+b++)*(buttonWidth+10),buttonY,buttonWidth,buttonHeight).setLabel("autoupdate");
   
   // horizontal sliders
@@ -140,6 +140,8 @@ void setup() {
     patternSliders[i] = new FWSliderPool(round(stepsSlider.value()), MAX_SLIDERS, LEFT_MARGIN, 0, width-200, 0);
     // set initial values for pattern sliders
     float[] vals = { 1, 0.5, 1 };
+    if(i == 0)
+      vals[1] = 0.1;
     for (int j = 0; j < patternSliders[i].size(); j++)
       patternSliders[i].slider(j).setValue(vals[j]);
 
